@@ -32,7 +32,7 @@ app.get('/', function(req, res){
 });
 
 
-app.get('/wirte', function(req, res){
+app.get('/write', function(req, res){
     res.sendFile(__dirname + '/write.html');
 });
 
@@ -63,9 +63,26 @@ app.post('/add', function(req, res){
 });
 
 // db 콜렉션 내의 모든 정보를 list로 보내기. ejs활용
-app.get('/list', function(requ, res){
+app.get('/list', function(req, res){
     db.collection('post').find().toArray(function(error, result){
         console.log(result);
         res.render('list.ejs', {posts : result});
     });
+})
+
+app.delete('/delete', function(req, res){
+    console.log(req.body);
+    req.body._id = parseInt(req.body._id);
+    //요청.body에 담겨온 게시물번호를 가진 글을 db에서 찾아서 삭제해주세요
+    db.collection('post').deleteOne(req.body, function(error, result){
+        console.log('삭제완료');
+        res.status(200).send({ message : '성공했습니다' });
+    })
+})
+
+app.get('/detail/:id', function(req, res){
+    db.collection('post').findOne({_id : req.params.id}, function(error, result){
+        console.log(result)
+        res.render('detail.ejs', {data : result})
+    })
 })
