@@ -37,7 +37,7 @@
         <% for (var i = 0 ; i < posts.length ; i++){ %>
             <li class="list-group-item">
                 <p>글번호 : <%= posts[i]._id %></p>
-                <h4>할일 제목 : <%=posts[i].제목 %></h4>
+                <a href="detail/<%=posts[i]._id%>">할일 제목 : <%=posts[i].제목 %></a>
                 <p>할일 마감 날짜 : <%=posts[i].날짜 %> </p>
                 <button class="btn btn-outline-primary delete" data-id="<%= posts[i]._id %>">삭제</button>
             </li>
