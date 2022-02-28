@@ -1,8 +1,12 @@
 // express 사용
 const express = require('express');
+const res = require('express/lib/response');
 const app = express();
 // body-parser 사용
 app.use(express.urlencoded({ extended: true }));
+// method-override 사용
+const methodOverride = require('method-override')
+app.use(methodOverride('_method'))
 // ejs 사용
 app.set('view engine', 'ejs');
 
@@ -93,3 +97,25 @@ app.get('/detail/:id', function (req, res) {
         }
     });
 });
+
+app.get('/edit/:id', function(req, res){ 
+    db.collection('post').findOne({ _id: parseInt(req.params.id) }, function (error, result) {
+        if (result === null) {
+            res.render('error.ejs');
+        } else {
+            console.log(result);
+            res.render('edit.ejs', { data: result });
+        }
+    });
+})
+
+app.put('/edit', function(req, res){
+    db.collection('post').updateOne({_id:parseInt(req.body.id)},{$set : {제목 : req.body.title, 날짜 : req.body.date}},function(error, result){
+        if(result === null){
+            res.render('error.ejs');
+        }else{
+            console.log("수정완료");
+            res.redirect("/list")
+        }
+    })
+})

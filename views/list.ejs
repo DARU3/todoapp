@@ -30,6 +30,7 @@
                 <p>할일 마감 날짜 : <%=posts[i].날짜 %>
                 </p>
                 <button class="btn btn-outline-primary delete" data-id="<%= posts[i]._id %>">삭제</button>
+                <button onclick="location.href='/edit/<%=posts[i]._id%>'" class="btn btn-outline-danger" data-id="<%= posts[i]._id %>">수정</button>
             </li>
             <% } %>
     </ul>
