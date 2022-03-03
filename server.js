@@ -5,12 +5,12 @@ const app = express();
 // body-parser 사용
 app.use(express.urlencoded({ extended: true }));
 // method-override 사용
-const methodOverride = require('method-override')
-app.use(methodOverride('_method'))
+const methodOverride = require('method-override');
+app.use(methodOverride('_method'));
 // ejs 사용
 app.set('view engine', 'ejs');
 
-app.use('/public', express.static('public'))
+app.use('/public', express.static('public'));
 
 // mongoDB 사용
 var db;
@@ -98,7 +98,7 @@ app.get('/detail/:id', function (req, res) {
     });
 });
 
-app.get('/edit/:id', function(req, res){ 
+app.get('/edit/:id', function (req, res) {
     db.collection('post').findOne({ _id: parseInt(req.params.id) }, function (error, result) {
         if (result === null) {
             res.render('error.ejs');
@@ -107,15 +107,117 @@ app.get('/edit/:id', function(req, res){
             res.render('edit.ejs', { data: result });
         }
     });
+});
+
+app.put('/edit', function (req, res) {
+    db.collection('post').updateOne({ _id: parseInt(req.body.id) }, { $set: { 제목: req.body.title, 날짜: req.body.date } }, function (error, result) {
+        if (result === null) {
+            res.render('error.ejs');
+        } else {
+            console.log('수정완료');
+            res.redirect('/list');
+        }
+    });
+});
+
+// passport 사용 코드
+const passport = require('passport');
+const LocalStrategy = require('passport-local');
+const session = require('express-session');
+const { Passport } = require('passport');
+
+// passport 미들웨어
+app.use(session({ secret: '비밀코드', resave: true, saveUninitialized: false }));
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.get('/fail', function (req, res) {
+    res.render('error.ejs');
+});
+
+app.get('/login', function (req, res) {
+    res.render('login.ejs');
+});
+
+// passport 사용
+app.post(
+    '/login',
+    passport.authenticate('local', {
+        failureRedirect: '/fail',
+    }),
+    function (req, res) {
+        res.redirect('/');
+    }
+);
+
+// passport 과정 코드 (복붙)
+passport.use(
+    new LocalStrategy(
+        {
+            usernameField: 'id',
+            passwordField: 'pw',
+            session: true,
+            passReqToCallback: false,
+        },
+        function (입력한아이디, 입력한비번, done) {
+            console.log(입력한아이디, 입력한비번);
+            db.collection('login').findOne({ id: 입력한아이디 }, function (error, result) {
+                if (error) return done(error);
+
+                if (!result) return done(null, false, { message: '아이디가 존재하지 않습니다.' });
+                if (입력한비번 == result.pw) {
+                    return done(null, result);
+                } else {
+                    return done(null, false, { message: '비밀번호가 틀렸습니다.' });
+                }
+            });
+        }
+    )
+);
+
+// passport 세션 생성
+passport.serializeUser(function (user, done) {
+    done(null, user.id);
+});
+
+// 세션데이터를 사용해 db에서 유저 찾기(마이페이지 접속시 발동)
+passport.deserializeUser(function (id, done) {
+    done(null, {});
+});
+
+// 로그인체크 미들웨어
+function loginCheck(req, res, next) {
+    if (req.user) {
+        next();
+    } else {
+        res.send('로그인해주세요.');
+    }
+}
+
+// 미들웨어는 2번째 자리에 삽입
+app.get('/mypage', loginCheck, function (req, res) {
+    res.render('mypage.ejs');
+});
+
+app.get('/join', function(req, res){
+    res.render('join.ejs')
 })
 
-app.put('/edit', function(req, res){
-    db.collection('post').updateOne({_id:parseInt(req.body.id)},{$set : {제목 : req.body.title, 날짜 : req.body.date}},function(error, result){
-        if(result === null){
-            res.render('error.ejs');
-        }else{
-            console.log("수정완료");
-            res.redirect("/list")
+// 회원가입
+app.post('/join', function (req, res) {
+    db.collection('login').findOne({ id: req.body.id }, function (error, result) {
+        if (error) {
+            return console.log(error);
         }
-    })
-})
+        if (result) {
+            res.send('아이디가 중복되었습니다.');
+        }
+        if (!result) {
+            db.collection('login').insertOne({ id: req.body.id, pw: req.body.pw, nickname: req.body.nickname }, function (error, result) {
+                console.log('회원가입 완료');
+                res.redirect('/');
+            });
+        }
+    });
+});
+
