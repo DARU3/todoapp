@@ -12,19 +12,26 @@ app.set('view engine', 'ejs');
 
 app.use('/public', express.static('public'));
 
+// bcrypt - 암호화 라이브러리
+const bcrypt = require('bcrypt');
+// 함호화 설정
+const saltRounds = 10;
+
+// dotenv 사용 - 환경변수 제어 라이브러리
+require('dotenv').config();
+
 // mongoDB 사용
 var db;
 const MongoClient = require('mongodb').MongoClient;
-const URL = 'mongodb+srv://daru0802:pokmn951@cluster0.jap1p.mongodb.net/todoapp?retryWrites=true&w=majority';
 
-MongoClient.connect(URL, function (error, client) {
+MongoClient.connect(process.env.DB_URL, function (error, client) {
     if (error) {
         return console.log(error);
     }
 
     db = client.db('todoapp');
 
-    app.listen(8080, function () {
+    app.listen(process.env.PORT, function () {
         console.log('listening on 8080');
     });
 });
@@ -163,13 +170,16 @@ passport.use(
             console.log(입력한아이디, 입력한비번);
             db.collection('login').findOne({ id: 입력한아이디 }, function (error, result) {
                 if (error) return done(error);
-
                 if (!result) return done(null, false, { message: '아이디가 존재하지 않습니다.' });
-                if (입력한비번 == result.pw) {
-                    return done(null, result);
-                } else {
-                    return done(null, false, { message: '비밀번호가 틀렸습니다.' });
-                }
+                bcrypt.compare(입력한비번, result.pw, function (error, Match) {
+                    console.log(입력한비번);
+                    console.log(result.pw);
+                    if (Match) {
+                        return done(null, result);
+                    } else {
+                        return done(null, false, { message: '비밀번호가 틀렸습니다.' });
+                    }
+                });
             });
         }
     )
@@ -181,8 +191,11 @@ passport.serializeUser(function (user, done) {
 });
 
 // 세션데이터를 사용해 db에서 유저 찾기(마이페이지 접속시 발동)
-passport.deserializeUser(function (id, done) {
-    done(null, {});
+passport.deserializeUser(function (userId, done) {
+    // user.id로 디비에서 유저를 찾고 그 유저의 정보를 가지고 올 수 있음
+    db.collection('login').findOne({ id: userId }, function (error, result) {
+        done(null, { result });
+    });
 });
 
 // 로그인체크 미들웨어
@@ -196,12 +209,18 @@ function loginCheck(req, res, next) {
 
 // 미들웨어는 2번째 자리에 삽입
 app.get('/mypage', loginCheck, function (req, res) {
-    res.render('mypage.ejs');
+    // deserializeUser를 사용하여 마이페이지에 유저 정보를 가져옴
+    console.log(req.user.result);
+    if (req.user === null) {
+        res.render('error.ejs');
+    } else {
+        res.render('mypage.ejs', { user: req.user.result });
+    }
 });
 
-app.get('/join', function(req, res){
-    res.render('join.ejs')
-})
+app.get('/join', function (req, res) {
+    res.render('join.ejs');
+});
 
 // 회원가입
 app.post('/join', function (req, res) {
@@ -213,11 +232,12 @@ app.post('/join', function (req, res) {
             res.send('아이디가 중복되었습니다.');
         }
         if (!result) {
-            db.collection('login').insertOne({ id: req.body.id, pw: req.body.pw, nickname: req.body.nickname }, function (error, result) {
-                console.log('회원가입 완료');
-                res.redirect('/');
+            bcrypt.hash(req.body.pw, saltRounds, function (err, hash) {
+                db.collection('login').insertOne({ id: req.body.id, pw: hash, nickname: req.body.nickname }, function (error, result) {
+                    console.log('회원가입 완료');
+                    res.redirect('/');
+                });
             });
         }
     });
 });
-
