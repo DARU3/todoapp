@@ -1,10 +1,10 @@
-// express 사용
+// express 사용 - node.js의 핵심 라이브러리!
 const express = require('express');
 const res = require('express/lib/response');
 const app = express();
-// body-parser 사용
+// body-parser 사용 - req에서 body값을 읽을 수 있는 라이브러리
 app.use(express.urlencoded({ extended: true }));
-// method-override 사용
+// method-override 사용 - app.put, app.delete를 사용가능하게 해주는 라이브러리
 const methodOverride = require('method-override');
 app.use(methodOverride('_method'));
 // ejs 사용
@@ -14,7 +14,7 @@ app.use('/public', express.static('public'));
 
 // bcrypt - 암호화 라이브러리
 const bcrypt = require('bcrypt');
-// 함호화 설정
+// 암호화 설정
 const saltRounds = 10;
 
 // dotenv 사용 - 환경변수 제어 라이브러리
@@ -36,21 +36,19 @@ MongoClient.connect(process.env.DB_URL, function (error, client) {
     });
 });
 
-app.get('/pet', function (req, res) {
-    res.send('펫용품 쇼핑할 수 있는 페이지입니다.');
-});
 
+// 홈으로 이동
 app.get('/', function (req, res) {
     res.render('index.ejs');
 });
 
+// 글쓰기 페이지로 이동
 app.get('/write', function (req, res) {
     res.render('write.ejs');
 });
 
 // 폼에서 /add로 post요청
 app.post('/add', function (req, res) {
-    res.send('전송완료');
     console.log(req.body);
     console.log(req.body.title);
     console.log(req.body.date);
@@ -72,6 +70,8 @@ app.post('/add', function (req, res) {
             });
         });
     });
+    res.redirect('/');
+
 });
 
 // db 콜렉션 내의 모든 정보를 list로 보내기. ejs활용
@@ -84,6 +84,8 @@ app.get('/list', function (req, res) {
         });
 });
 
+
+// 삭제 기능
 app.delete('/delete', function (req, res) {
     console.log(req.body);
     req.body._id = parseInt(req.body._id);
@@ -94,6 +96,7 @@ app.delete('/delete', function (req, res) {
     });
 });
 
+// 상세페이지로 이동
 app.get('/detail/:id', function (req, res) {
     db.collection('post').findOne({ _id: parseInt(req.params.id) }, function (error, result) {
         if (result === null) {
@@ -105,6 +108,8 @@ app.get('/detail/:id', function (req, res) {
     });
 });
 
+
+// 글 수정 페이지로 이동
 app.get('/edit/:id', function (req, res) {
     db.collection('post').findOne({ _id: parseInt(req.params.id) }, function (error, result) {
         if (result === null) {
@@ -116,6 +121,8 @@ app.get('/edit/:id', function (req, res) {
     });
 });
 
+
+// 글수정 기능
 app.put('/edit', function (req, res) {
     db.collection('post').updateOne({ _id: parseInt(req.body.id) }, { $set: { 제목: req.body.title, 날짜: req.body.date } }, function (error, result) {
         if (result === null) {
@@ -138,10 +145,12 @@ app.use(session({ secret: '비밀코드', resave: true, saveUninitialized: false
 app.use(passport.initialize());
 app.use(passport.session());
 
+// 에러페이지 이동
 app.get('/fail', function (req, res) {
     res.render('error.ejs');
 });
 
+// 로그인페이지 이동
 app.get('/login', function (req, res) {
     res.render('login.ejs');
 });
@@ -218,6 +227,8 @@ app.get('/mypage', loginCheck, function (req, res) {
     }
 });
 
+
+// 회원가입 페이지 이동
 app.get('/join', function (req, res) {
     res.render('join.ejs');
 });
@@ -241,3 +252,14 @@ app.post('/join', function (req, res) {
         }
     });
 });
+
+// 검색 기능 구현
+app.get('/search',(req, res)=>{
+    // req.query -> 쿼리스트링을 담고 있음
+    console.log(req.query.value)
+    // /abc/ -> 정규식, abc가 포함된 모든 것을 찾음
+    db.collection('post').find({제목 : req.query.value }).toArray((error, result)=>{
+        console.log(result);
+        res.render('search.ejs', {search : result, searchWord : req.query.value})
+    })
+})

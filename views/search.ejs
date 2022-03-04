@@ -18,10 +18,10 @@
 <body>
     <%- include('nav.html')%>
 
-        <h1 class="ml-2 my-3 text-center">서버에서 가져온 할일 리스트</h1>
+        <h1 class="ml-2 my-3 text-center">검색결과</h1>
 
         <div class="container input-group mb-2">
-            <input class="form-control" id="search-word">
+            <input class="form-control" id="search-word" placeholder="<%=searchWord%>">
             <button class="input-group-append btn btn-danger" id="search">검색</button>
         </div>
 
@@ -30,16 +30,16 @@
 
         <div class="container">
             <ul class="list-group">
-                <% for (var i=0 ; i < posts.length ; i++){ %>
+                <% for (var i=0 ; i < search.length ; i++){ %>
                     <li class="list-group-item">
-                        <p>글번호 : <%= posts[i]._id %>
+                        <p>글번호 : <%= search[i]._id %>
                         </p>
-                        <a href="detail/<%=posts[i]._id%>">할일 제목 : <%=posts[i].제목 %></a>
-                        <p>할일 마감 날짜 : <%=posts[i].날짜 %>
+                        <a href="detail/<%=search[i]._id%>">할일 제목 : <%=search[i].제목 %></a>
+                        <p>할일 마감 날짜 : <%=search[i].날짜 %>
                         </p>
-                        <button class="btn btn-outline-primary delete" data-id="<%= posts[i]._id %>">삭제</button>
-                        <button onclick="location.href='/edit/<%=posts[i]._id%>'" class="btn btn-outline-danger"
-                            data-id="<%= posts[i]._id %>">수정</button>
+                        <button class="btn btn-outline-primary delete" data-id="<%= search[i]._id %>">삭제</button>
+                        <button onclick="location.href='/edit/<%=search[i]._id%>'" class="btn btn-outline-danger"
+                            data-id="<%= search[i]._id %>">수정</button>
                     </li>
                     <% } %>
             </ul>
