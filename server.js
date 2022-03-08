@@ -12,6 +12,11 @@ app.set('view engine', 'ejs');
 
 app.use('/public', express.static('public'));
 
+// socket.io 사용 문법
+const http = require('http').createServer(app);
+const { Server, Socket } = require("socket.io");
+const io = new Server(http);
+
 // bcrypt - 암호화 라이브러리
 const bcrypt = require('bcrypt');
 // 암호화 설정
@@ -58,10 +63,13 @@ MongoClient.connect(process.env.DB_URL, function (error, client) {
 
     db = client.db('todoapp');
 
-    app.listen(process.env.PORT, function () {
+    http.listen(process.env.PORT, function () {
         console.log('listening on 8080');
     });
 });
+
+// ObjectId 함수 사용하기
+const {ObjectId} = require('mongodb');
 
 // app.use = 전역 미들웨어 명령어
 // 별개의 라우터로 저장해놓은 라우트들 불러오기
@@ -338,4 +346,93 @@ app.post('/upload', upload.single('프로필'), function(req, res){
 
 app.get('/image/:imageName', function(req, res){
     res.sendFile(__dirname + '/public/image/' + req.params.imageName)
+})
+
+
+
+app.post('/chat', loginCheck, function(req, res){
+    console.log(req.body)
+    var 저장할거 = {
+        title : '채팅방1',
+        member : [ObjectId(req.body.채팅당한사람id), req.user.result._id],
+        date : new Date()
+    }
+    db.collection('chatroom').insertOne(저장할거).then((result)=>{
+        res.send('성공')
+    })
+})
+
+app.get('/chat',loginCheck, function(req, res){
+    db.collection('chatroom').find({member : req.user.result._id}).toArray().then((result)=>{
+        res.render('chat.ejs', { data : result})
+    })
+})
+
+app.post('/message',loginCheck,function(req, res){
+    var 저장할거 = {
+        parent : ObjectId(req.body.parent),
+        content : req.body.content,
+        userId : req.user.result._id,
+        date : new Date(),
+    }
+    db.collection('message').insertOne(저장할거).then((result)=>{
+        res.send(result)
+    })
+})
+
+
+// 실시간 요청 채널 열기
+app.get('/message/:id', loginCheck, function(req, res){
+
+    res.writeHead(200, {
+        "Connection": "keep-alive",
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+    });
+
+    db.collection('message').find({ parent : ObjectId(req.params)}).toArray().then((result)=>{
+        res.write('event: test\n')
+        res.write('data: '+ JSON.stringify(result) +'\n\n');
+    })
+
+    // db change stream => db에 변경이 생길때마다 바로바로 서버에 전달 = 실시간
+    // 서버 -> 유저 일방적 통신
+    const 찾을문서 = [
+        { $match: { 'fullDocument.parent' : ObjectId(req.params)} }
+    ];
+    console.log(찾을문서)
+    
+    const changeStream = db.collection('message').watch(찾을문서);
+    console.log(changeStream)
+    changeStream.on('change', function (result) {
+            res.write('event: test\n');
+            res.write('data: ' + JSON.stringify([result.fullDocument]) + '\n\n');
+        });
+});
+
+app.get('/socket', function(req, res){
+    res.render('socket.ejs')
+})
+
+io.on('connection', function(socket){
+    console.log('유저접속됨');
+
+    // 채팅방 생성 및 유저 참여시킴
+    socket.on('joinroom', function(data){
+        socket.join('room1');
+    });
+
+    // 채팅방1에게만 메세지 보내기
+    socket.on('room1-send', function(data){
+        io.to('room1').emit('broadcast', data)
+    })
+
+
+    // 유저가 서버로 보낸 메세지 받기
+    socket.on('user-send', function(data){
+        // 서버가 유저에게 메세지 보내기
+        io.emit('broadcast', data)
+        // io.to(socket.id).emit('broadcast', data)
+        // => 서버가 특정 유저에게만 메세지 보내게 하고 싶을 때
+    })
 })
